@@ -4,7 +4,7 @@ import random
 import hashlib
 import hmac
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 
@@ -130,7 +130,10 @@ def build_yijing_lines_display(lines):
 
 @app.get("/")
 async def root():
-    return {"status": "I Ching Oracle API is running"}
+    html_path = os.path.join(os.path.dirname(__file__), "..", "index.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path, media_type="text/html")
+    return HTMLResponse("<h1>I Ching Oracle</h1><p>Frontend not found.</p>")
 
 @app.get("/api/cast")
 async def api_cast(question: str = ""):
