@@ -1,0 +1,228 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>I Ching Oracle | Ancient Divination</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0a0a0f; color: #e0dcd0; }
+        .coin { width: 60px; height: 60px; border-radius: 50%; display: inline-block; margin: 0 6px; background: radial-gradient(circle at 35% 35%, #d4a853, #a67c2e); box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: transform 0.6s; }
+        .coin.flip { animation: coinFlip 0.6s ease-in-out; }
+        @keyframes coinFlip { 0% { transform: rotateY(0); } 50% { transform: rotateY(180deg); } 100% { transform: rotateY(0); } }
+        .line-yang { color: #d4a853; font-size: 28px; letter-spacing: 4px; }
+        .line-yin { color: #6b7280; font-size: 28px; letter-spacing: 4px; }
+        .hex-line { transition: all 0.3s; }
+        .btn-gold { background: linear-gradient(135deg, #d4a853, #b8860b); color: #1a1a1a; font-weight: 600; transition: all 0.2s; }
+        .btn-gold:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(212, 168, 83, 0.3); }
+        .card-bg { background: linear-gradient(145deg, #12121a, #1a1a24); border: 1px solid #2a2a3a; }
+        .glow-text { text-shadow: 0 0 20px rgba(212,168,83,0.15); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+    <header class="text-center mt-8 mb-6">
+        <h1 class="text-4xl font-light tracking-widest glow-text">☰ I Ching Oracle ☷</h1>
+        <p class="text-gray-500 mt-2 text-sm">The ancient Chinese Book of Changes</p>
+    </header>
+
+    <main class="w-full max-w-2xl mx-auto">
+        <!-- Step 1: Ask Question -->
+        <div id="step-question" class="card-bg rounded-2xl p-8 mb-6">
+            <h2 class="text-xl font-light mb-4 text-center">What is on your mind?</h2>
+            <p class="text-gray-400 text-sm text-center mb-6">Take a moment. Focus on one question. Then cast the coins.</p>
+            <textarea id="question-input" rows="2" class="w-full bg-gray-900 border border-gray-700 rounded-xl p-4 text-gray-200 text-sm resize-none focus:outline-none focus:border-yellow-700" placeholder="e.g. Should I take the new job?"></textarea>
+            <div class="flex justify-center mt-6">
+                <button id="btn-cast" class="btn-gold px-10 py-3 rounded-xl text-lg">Cast the Coins</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Coin Animation -->
+        <div id="step-animation" class="card-bg rounded-2xl p-8 mb-6 hidden">
+            <h2 class="text-lg font-light mb-6 text-center">Casting the coins...</h2>
+            <div id="coin-area" class="flex justify-center items-center h-32">
+                <div class="coin" id="coin1"></div>
+                <div class="coin" id="coin2"></div>
+                <div class="coin" id="coin3"></div>
+            </div>
+            <p id="toss-counter" class="text-center text-gray-500 text-sm mt-4">Toss 1 of 6</p>
+            <p id="toss-hint" class="text-center text-gray-600 text-xs mt-2">Each toss builds one line of your hexagram</p>
+        </div>
+
+        <!-- Step 3: Free Preview -->
+        <div id="step-preview" class="card-bg rounded-2xl p-8 mb-6 hidden">
+            <div class="text-center mb-6">
+                <span id="hex-symbol" class="text-6xl"></span>
+                <h2 id="hex-name" class="text-2xl font-light mt-3"></h2>
+                <p id="hex-number" class="text-gray-500 text-sm"></p>
+            </div>
+            <div id="hexagram-display" class="flex flex-col items-center space-y-1 my-6"></div>
+            <p id="preview-text" class="text-gray-300 text-sm leading-relaxed text-center border-t border-gray-800 pt-4"></p>
+            <div class="flex flex-col items-center mt-8">
+                <button id="btn-unlock" class="btn-gold px-8 py-3 rounded-xl text-lg w-full max-w-xs">Unlock Full Reading — $3.99</button>
+                <p class="text-gray-600 text-xs mt-3">One-time payment. No account needed. No subscription.</p>
+            </div>
+        </div>
+
+        <!-- Step 4: Full Reading (after payment) -->
+        <div id="step-reading" class="card-bg rounded-2xl p-8 mb-6 hidden">
+            <div class="text-center mb-6">
+                <span id="full-symbol" class="text-5xl"></span>
+                <h2 id="full-hex-name" class="text-2xl font-light mt-2"></h2>
+            </div>
+            <div id="full-content" class="text-gray-300 text-sm leading-relaxed space-y-4"></div>
+            <div class="flex flex-wrap justify-center gap-3 mt-8">
+                <button id="btn-download" class="bg-gray-800 hover:bg-gray-700 text-gray-300 px-6 py-2 rounded-xl text-sm transition">📥 Download Result</button>
+                <button id="btn-new" class="border border-gray-700 hover:border-gray-500 text-gray-400 px-6 py-2 rounded-xl text-sm transition">Ask another question</button>
+            </div>
+            <p class="text-center text-gray-600 text-xs mt-4">💡 No account? Screenshot or download this page to save your reading.</p>
+        </div>
+
+        <!-- Footer -->
+        <p class="text-center text-gray-700 text-xs mt-8 mb-12">I Ching Oracle &middot; Ancient wisdom for modern questions</p>
+    </main>
+
+    <script>
+    let state = { question: "", hexagramNumber: null, hexagramName: "", hexagramSymbol: "", lines: [], changingLines: [], resultHex: null, preview: "", judgment: "" };
+    let tossCount = 0;
+    let tossResults = [];
+
+    document.getElementById("btn-cast").addEventListener("click", startCasting);
+    document.getElementById("btn-unlock").addEventListener("click", handlePayment);
+    document.getElementById("btn-new").addEventListener("click", resetAll);
+
+    function startCasting() {
+        const q = document.getElementById("question-input").value.trim();
+        if (!q) { document.getElementById("question-input").focus(); return; }
+        state.question = q;
+        tossCount = 0;
+        tossResults = [];
+        document.getElementById("step-question").classList.add("hidden");
+        document.getElementById("step-animation").classList.remove("hidden");
+        document.getElementById("btn-cast").disabled = true;
+        animateToss();
+    }
+
+    function animateToss() {
+        if (tossCount >= 6) { finishCasting(); return; }
+        document.getElementById("toss-counter").textContent = `Toss ${tossCount + 1} of 6`;
+        document.querySelectorAll(".coin").forEach(c => c.classList.remove("flip"));
+        setTimeout(() => {
+            document.querySelectorAll(".coin").forEach(c => c.classList.add("flip"));
+            setTimeout(() => {
+                const outcome = tossCount + 1;
+                tossResults.push(outcome);
+                tossCount++;
+                animateToss();
+            }, 700);
+        }, 200);
+    }
+
+    async function finishCasting() {
+        document.getElementById("step-animation").classList.add("hidden");
+        document.getElementById("step-preview").classList.remove("hidden");
+        document.getElementById("btn-cast").disabled = false;
+
+        try {
+            const resp = await fetch(`/api/cast?question=${encodeURIComponent(state.question)}`);
+            const data = await resp.json();
+            state.hexagramNumber = data.hexagram_number;
+            state.hexagramName = data.hexagram_name;
+            state.hexagramSymbol = data.hexagram_symbol || "䷀";
+            state.lines = data.lines;
+            state.changingLines = data.changing_lines;
+            state.resultHex = data.resulting_hexagram;
+            state.preview = data.preview;
+            state.judgment = data.judgment;
+            renderPreview(data);
+        } catch(e) {
+            alert("Something went wrong. Please try again.");
+            resetAll();
+        }
+    }
+
+    function renderPreview(data) {
+        document.getElementById("hex-symbol").textContent = data.hexagram_symbol;
+        document.getElementById("hex-name").textContent = data.hexagram_name;
+        document.getElementById("hex-number").textContent = `Hexagram #${data.hexagram_number}`;
+        document.getElementById("preview-text").textContent = data.judgment;
+        const display = document.getElementById("hexagram-display");
+        display.innerHTML = "";
+        (data.line_display || []).forEach(line => {
+            const d = document.createElement("div");
+            d.className = "hex-line text-center";
+            d.textContent = line;
+            display.appendChild(d);
+        });
+    }
+
+    function handlePayment() {
+        const productUrl = "https://iching-oracle.gumroad.com/l/reading";
+        window.open(productUrl + `?price=3.99&question=${encodeURIComponent(state.question)}`, "_blank");
+        // Poll for license key - in MVP user pastes license key
+        const license = prompt("Paste your license key from Gumroad (sent to your email after purchase):");
+        if (license && license.trim()) {
+            verifyAndGetReading(license.trim());
+        }
+    }
+
+    async function verifyAndGetReading(licenseKey) {
+        try {
+            const verifyResp = await fetch("/api/verify-payment", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ license_key: licenseKey })
+            });
+            const verifyData = await verifyResp.json();
+            if (!verifyData.verified) {
+                alert("License key not valid. Please check and try again.");
+                return;
+            }
+            document.getElementById("step-preview").classList.add("hidden");
+            document.getElementById("step-reading").classList.remove("hidden");
+            document.getElementById("full-symbol").textContent = state.hexagramSymbol;
+            document.getElementById("full-hex-name").textContent = state.hexagramName;
+
+            const readingResp = await fetch("/api/full-reading", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    question: state.question,
+                    hexagram_number: state.hexagramNumber,
+                    lines: state.lines,
+                    changing_lines: state.changingLines,
+                    resulting_hexagram: state.resultHex
+                })
+            });
+            const readingData = await readingResp.json();
+            const content = document.getElementById("full-content");
+            if (readingData.reading) {
+                content.innerHTML = readingData.reading.replace(/\*\*(.*?)\*\*/g, "<strong class='text-yellow-500'>$1</strong>").replace(/\n\n/g, "</p><p class='mt-3'>").replace(/\n/g, "<br>");
+            } else {
+                content.innerHTML = "<p class='text-red-400'>Sorry, the reading could not be generated. Please contact support.</p>";
+            }
+        } catch(e) {
+            alert("Error retrieving reading. Please try again.");
+        }
+    }
+
+    document.getElementById("btn-download").addEventListener("click", function() {
+        const el = document.getElementById("step-reading");
+        html2canvas ? html2canvas(el).then(canvas => {
+            const link = document.createElement("a");
+            link.download = `iching-reading-${state.hexagramNumber}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }) : alert("Screenshot feature unavailable. Please take a screenshot manually.");
+    });
+
+    function resetAll() {
+        state = { question: "", hexagramNumber: null, hexagramName: "", hexagramSymbol: "", lines: [], changingLines: [], resultHex: null, preview: "", judgment: "" };
+        document.getElementById("step-question").classList.remove("hidden");
+        document.getElementById("step-preview").classList.add("hidden");
+        document.getElementById("step-reading").classList.add("hidden");
+        document.getElementById("question-input").value = "";
+    }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</body>
+</html>
