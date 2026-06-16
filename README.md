@@ -1,4 +1,4 @@
-﻿# I Ching Oracle ☰☷
+# I Ching Oracle ☰☷
 
 An English-language I Ching (六爻) divination website for international users. Ask a question, cast three coins, and get an AI-powered reading.
 
